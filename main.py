@@ -70,12 +70,6 @@ def generate_order_id():
             return random_number
 
 
-@app.on_event("shutdown")
-def shutdown():
-    # Close the database connection
-    conn.close()
-
-
 @app.get("/")
 async def home():
     return RedirectResponse(url="https://ezmod.vip/")
@@ -103,11 +97,12 @@ async def generate_receipts(number_of_receipts: int):
 
 
 @app.get("/checkout/order-received/{order_id}/", response_class=HTMLResponse)
-async def checkout_order_received(request: Request, order_id: str, query_param: str = Query(None)):
+async def checkout_order_received(request: Request, order_id: str, order_key: str = Query(None, alias="key")):
     # Retrieve order data from the database
     c.execute("SELECT * FROM orders WHERE order_id=?", (order_id,))
     order_data = c.fetchone()
-    if order_data and query_param:
+
+    if order_data and order_key == order_data[0]:
         _, order_key, order_date, payment_method, license_key = order_data
         # Render the template with the retrieved order data
         return templates.TemplateResponse(
