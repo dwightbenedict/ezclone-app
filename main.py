@@ -18,12 +18,12 @@ app.mount("/static/images", StaticFiles(directory="static/images"), name="static
 templates = Jinja2Templates(directory="templates")
 
 # Initialize the cursor as a global variable
-conn = sqlite3.connect('order_id.db')
+conn = sqlite3.connect('orders.db')
 c = conn.cursor()
 
 # Create a table to store order data if it doesn't exist
 c.execute('''CREATE TABLE IF NOT EXISTS orders (
-                order_id TEXT PRIMARY KEY,
+                order_id INTEGER PRIMARY KEY,
                 order_key TEXT,
                 order_date TEXT,
                 payment_method TEXT,
@@ -60,12 +60,12 @@ def generate_order_key(prefix="wc_order_", length=13):
 def generate_order_id():
     while True:
         # Generate a random 6-digit number greater than 420000 but less than 500000
-        random_number = random.randint(420001, 499999)
+        random_number = random.randint(420001, 599999)
         # Check if the number already exists in the database
-        c.execute("SELECT COUNT(*) FROM order_id WHERE number=?", (random_number,))
+        c.execute("SELECT COUNT(*) FROM orders WHERE order_id=?", (random_number,))
         if c.fetchone()[0] == 0:
             # If the number is unique, insert it into the database and return it
-            c.execute("INSERT INTO order_id VALUES (?)", (random_number,))
+            c.execute("INSERT INTO orders (order_id) VALUES (?)", (random_number,))
             conn.commit()
             return random_number
 
@@ -86,7 +86,7 @@ async def generate_receipts(number_of_receipts: int):
         payment_method = generate_payment_method()
         license_key = generate_license_key()
         # Insert order data into the database
-        c.execute("INSERT INTO orders VALUES (?, ?, ?, ?, ?)", (order_id, order_key, order_date, payment_method, license_key))
+        c.execute("INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?)", (order_id, order_key, order_date, payment_method, license_key))
         conn.commit()
         # Generate receipt URL
         receipt = f"https://ezmod.org/checkout/order-received/{order_id}/?key={order_key}"
@@ -97,12 +97,12 @@ async def generate_receipts(number_of_receipts: int):
 
 
 @app.get("/checkout/order-received/{order_id}/", response_class=HTMLResponse)
-async def checkout_order_received(request: Request, order_id: str, order_key: str = Query(None, alias="key")):
+async def checkout_order_received(request: Request, order_id: int, order_key: str = Query(None, alias="key")):
     # Retrieve order data from the database
     c.execute("SELECT * FROM orders WHERE order_id=?", (order_id,))
     order_data = c.fetchone()
 
-    if order_data and order_key == order_data[0]:
+    if order_data and order_key == order_data[1]:
         _, order_key, order_date, payment_method, license_key = order_data
         # Render the template with the retrieved order data
         return templates.TemplateResponse(
