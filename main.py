@@ -106,7 +106,7 @@ async def checkout_order_received(request: Request, order_id: int, order_key: st
         _, order_key, order_date, payment_method, license_key = order_data
         # Render the template with the retrieved order data
         return templates.TemplateResponse(
-            "index.html",
+            "receipt.html",
             {
                 "request": request,
                 "order_id": order_id,
@@ -119,7 +119,7 @@ async def checkout_order_received(request: Request, order_id: int, order_key: st
     else:
         # Render the "cobalt-thank-you.html" template
         return templates.TemplateResponse(
-            "index.html",
+            "receipt.html",
             {
                 "request": request,
                 "order_id": order_id,
